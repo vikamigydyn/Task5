@@ -1,0 +1,68 @@
+## Лабораторная работа №5. Хранение данных. Настройки и внешние файлы
+## Выполнила: Мигыдын Вика, ИСП-211о
+
+## 1. Обзор
+Приложение предназначено для загрузки и просмотра PDF файлов журналов по их идентификатору. Пользователь может ввести номер журнала, скачать его, просмотреть и удалить загруженный файл.
+
+## 2. Структура
+- **MainActivity**: Основная активность, содержащая элементы управления для ввода номера журнала, кнопки для загрузки, просмотра и удаления файла, а также отображение статуса загрузки.
+скрин 7
+
+## 3. MainActivity
+На данном экране расположены кнопки:
+- **Кнопка "Скачать"**: При нажатии запускает процесс загрузки файла по введенному идентификатору.
+
+```java
+downloadButton.setOnClickListener(v -> {
+    String journalId = journalIdInput.getText().toString();
+    if (!journalId.isEmpty()) {
+        createDirectoryAndDownload(journalId);
+    } else {
+        statusText.setText("Пожалуйста, введите номер журнала!");
+    }
+});
+Кнопка "Смотреть": Позволяет открыть загруженный PDF файл, если он существует.
+viewButton.setOnClickListener(v -> {
+    if (downloadedFile != null && downloadedFile.exists()) {
+        Uri fileUri = FileProvider.getUriForFile(MainActivity.this, getApplicationContext().getPackageName() + ".provider", downloadedFile);
+        Intent viewIntent = new Intent(Intent.ACTION_VIEW);
+        viewIntent.setDataAndType(fileUri, "application/pdf");
+        viewIntent.setFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+        try {
+            startActivity(Intent.createChooser(viewIntent, "Открыть PDF в приложении"));
+        } catch (ActivityNotFoundException e) {
+            Toast.makeText(MainActivity.this, "Не установлено приложение для просмотра PDF-файлов", Toast.LENGTH_SHORT).show();
+        }
+    }
+});
+Кнопка "Удалить": Удаляет загруженный файл, если он существует.
+deleteButton.setOnClickListener(v -> {
+    if (downloadedFile != null && downloadedFile.exists()) {
+        if (downloadedFile.delete()) {
+            viewButton.setEnabled(false);
+            deleteButton.setEnabled(false);
+            statusText.setText("Файл удален");
+        }
+    }
+});
+## 4. Загрузка файла
+Загрузка файла осуществляется асинхронно с использованием AsyncTask. Приложение создает директорию для хранения загруженных файлов и загружает PDF по указанному URL.
+
+private void createDirectoryAndDownload(String journalId) {
+    File dir = new File(getExternalFilesDir(null), "JournalDownloads");
+    if (!dir.exists()) {
+        boolean isCreated = dir.mkdirs();
+        if (isCreated) {
+            Log.d("Directory", "Directory created successfully");
+        } else {
+            Log.d("Directory", "Failed to create directory");
+            Toast.makeText(this, "Ошибка при создании директории!", Toast.LENGTH_SHORT).show();
+            return;
+        }
+    }
+    String fileUrl = "https://ntv.ifmo.ru/file/journal/" + journalId + ".pdf";
+    new DownloadFileTask(MainActivity.this).execute(fileUrl, journalId);
+}
+## 5. Дополнительные функции
+Всплывающее окно с инструкциями: Появляется при первом запуске приложения, с возможностью отключить его отображение в будущем.
+
